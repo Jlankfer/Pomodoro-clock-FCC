@@ -1,0 +1,219 @@
+const start = "start"
+const stop = "stop"
+const reset = "reset"
+
+
+class Controls extends React.Component{
+  constructor(props){
+    super(props);
+  }
+  render(){
+    return(
+      <div class="control-pad">
+        <label id={this.props.label}>{this.props.labelInner}</label>
+        <h2 id={this.props.ident}>{this.props.initial}</h2>
+        <button id={this.props.increBtn} onClick={this.props.clicker}>Increment</button><button id={this.props.decreBtn} onClick={this.props.clicker}>Decrement</button>
+        </div>
+    )
+  }
+}
+
+class MyClock extends React.Component{
+  constructor(props){
+    super(props);
+    this.state={
+      workSetting:25,
+      breakSetting:5,
+      work: 1500,
+      break: 300,
+      status: "Set-up",
+     timerIsOn:false,
+      intervalId:""
+    }
+    this.timer = this.timer.bind(this)
+    this.clicker=this.clicker.bind(this)
+    this.startStop=this.startStop.bind(this)
+    this.reset=this.reset.bind(this)
+    this.interval = null
+    this.countdown = null
+    this.startTime =null
+    this.pause=this.pause.bind(this)
+  }
+     startStop(){
+       if(this.state.status ==="Set-up"){
+         this.setState({
+           work:(this.state.workSetting*60), 
+           break:(this.state.breakSetting*60),
+           status:"Session"
+         },
+         ()=> this.timer(this.state.work, document.querySelector("#time-left"))
+         );
+       }
+       else if (this.state.status ==="Session"){switch (this.state.timerIsOn){
+         case false:
+            this.timer(this.state.work, document.querySelector("#time-left"));
+           break;
+         case true:
+           this.pause()
+           break;
+       }
+                                               }
+       else if (this.state.status ==="Break"){
+         switch (this.state.timerIsOn){
+         case false:
+            this.timer(this.state.break, document.querySelector("#time-left"));
+           break;
+         case true:
+           this.pause()
+           break;
+       }
+     }
+     }
+  
+  clicker(e){
+    switch(e.target.id){
+      case "session-increment":
+        if(this.state.workSetting < 60){this.setState({
+          workSetting: this.state.workSetting+1
+        })}
+        break;
+        case "session-decrement":
+        if(this.state.workSetting > 1){this.setState({
+          workSetting: this.state.workSetting-1
+        })}
+        break;
+        case "break-increment":
+        if(this.state.breakSetting < 60){this.setState({
+          breakSetting: this.state.breakSetting+1
+        })}
+        break;
+        case "break-decrement":
+        if(this.state.breakSetting > 1){this.setState({
+          breakSetting: this.state.breakSetting-1
+        })}
+        break;
+        
+    }
+  }
+  reset(){
+    clearInterval(this.state.intervalId)
+    this.setState({
+      workSetting:25,
+      breakSetting:5,
+      work:1500,
+      break:300,
+      status:"Set-up",
+      timerIsOn:false,
+      IntervalId:""
+    })
+   　document.querySelector("#beep").pause()
+    document.querySelector("#beep").currentTime = 0
+    
+  }
+  timer(timeInSeconds, displayElement){
+    this.startTime = new Date().getTime();
+    var time, ms = timeInSeconds*1000
+    let intervalId;
+    
+    this.countdown = ()=>{
+      time = Math.max(0, ms-(new Date().getTime()-this.startTime))
+      let minutes = Math.floor(time/60000) 
+      let seconds = Math.floor(time/1000)%60
+      seconds = (seconds < 10?"0"+seconds:seconds)
+      minutes = (minutes <10?"0"+minutes:minutes)
+      displayElement.textContent = minutes + ":" + seconds
+      if(displayElement.textContent ==="00:00"){
+        document.querySelector("#beep").play();
+      }
+      if(time === 0){
+        if(this.state.status ==="Session"){
+        clearInterval(intervalId)
+        this.setState({
+          status:"Break",
+          work: this.state.workSetting*60,
+          break: this.state.breakSetting*60
+        },
+         ()=>  this.timer(this.state.break, displayElement)            
+                     )
+      }
+        else if(this.state.status === "Break"){
+          clearInterval(intervalId)
+        this.setState({
+          status:"Session",
+          work: this.state.workSetting*60,
+          break: this.state.breakSetting*60
+        },
+            ()=> this.timer(this.state.work, displayElement)        )
+        }
+      }
+      return time
+    }
+    this.interval =()=>{ 
+      this.countdown();
+      intervalId = setInterval(this.countdown, 200)
+                       this.setState({
+                         intervalId:intervalId,
+                         timerIsOn:true
+                       })}
+  this.interval();
+  }
+  pause(){
+   if(this.state.status === "Session"){ let remaining = this.state.work*1000 - (new Date().getTime() - this.startTime)
+    clearInterval(this.state.intervalId)
+    this.setState({
+      timerIsOn:false,
+      work:remaining/1000
+    })
+ }
+    else if (this.state.status ==="Break"){
+      let remaining = this.state.break*1000 - (new Date().getTime() - this.startTime)
+    clearInterval(this.state.intervalId)
+    this.setState({
+      timerIsOn:false,
+      break:remaining/1000
+    })
+    
+  }
+  }
+  render(){
+    function secondsToMinutes(number){
+      let m=parseInt(number/60)
+      let s = parseInt(number%60)
+      s = (s<10?"0"+s:s)
+      m =(m<10?"0"+m:m)
+      return m+":"+s
+    }
+    return(
+      <div id="app">
+        <h1 id="title">Pomodoro Clock</h1>
+        <div id="wrapper">
+        <div id="controls">
+    <Controls ident="session-length"
+      label = "session-label"
+      labelInner = "Session-length"
+      initial = {this.state.workSetting}
+      increBtn = "session-increment"
+      clicker ={this.clicker}
+      decreBtn = "session-decrement"
+      />
+        <Controls ident="break-length"
+          labelInner = "Break-length"
+          label="break-label"
+          clicker = {this.clicker}
+          initial = {this.state.breakSetting}
+          increBtn = "break-increment"
+      decreBtn = "break-decrement"
+          />
+        </div>
+        <div id="timer-label">{this.state.status}</div>
+        <div id="time-left">{secondsToMinutes(this.state.work)}</div>
+        <button id="start_stop" onClick={this.startStop}>Start/Stop</button>
+        <button id="reset" onClick={this.reset}>Reset</button>
+        <audio id="beep" src="https://raw.githubusercontent.com/rapidsloth/Pomodoro-clock-FCC/master/Japanese_School_Bell_short.mp3"></audio>
+        </div>
+        </div>
+    )
+  }
+}
+
+ReactDOM.render(<MyClock />, document.getElementById("container"))
